@@ -1,0 +1,68 @@
+# ngrok Configuration File for Django Slack Bot
+# ==============================================
+# 
+# This file configures ngrok tunneling for your Django Slack bot.
+# Place this file in your project root directory.
+
+version: "2"
+
+# Web interface configuration
+web_addr: localhost:4040
+
+# Tunnel configurations
+tunnels:
+  django-bot:
+    proto: http
+    addr: 8000
+    # Uncomment and set a custom subdomain (requires paid plan)
+    # subdomain: my-slack-bot
+    
+    # Add custom headers
+    request_headers:
+      # Skip ngrok browser warning
+      ngrok-skip-browser-warning: "true"
+    
+    # Basic auth (optional)
+    # auth: "username:password"
+    
+    # IP restrictions (optional)
+    # allow_cidrs:
+    #   - "0.0.0.0/0"
+
+# Global settings
+log_level: info
+log_format: term
+
+# Update check (set to false to disable)
+update_check: true
+
+# Metadata (optional, for organization)
+metadata: '{"service": "django-slack-bot", "env": "development"}'
+
+# Uncomment to use a custom config location
+# config_path: /path/to/ngrok.yml
+
+# ========================================
+# Configuration Options Explained:
+# ========================================
+#
+# subdomain: Creates a consistent URL (requires paid plan)
+#   Example: https://my-bot.ngrok.io instead of random URLs
+#
+# auth: Adds basic authentication to your tunnel
+#   Format: "username:password"
+#
+# allow_cidrs: Restricts access to specific IP ranges
+#   Use "0.0.0.0/0" to allow all IPs
+#
+# request_headers: Add custom headers to all requests
+#   "ngrok-skip-browser-warning": Skips the ngrok browser warning
+#
+# To get a permanent subdomain:
+# 1. Upgrade to ngrok paid plan at https://dashboard.ngrok.com/billing
+# 2. Uncomment the subdomain line above
+# 3. Replace "my-slack-bot" with your desired subdomain
+#
+# For more options, visit: https://ngrok.com/docs/ngrok-agent/config
+#
+# Example: https://secretly-pretty-swine.ngrok-free.app

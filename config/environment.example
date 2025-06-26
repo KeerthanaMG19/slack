@@ -1,0 +1,68 @@
+# =============================================================================
+# AI-POWERED SLACK BOT ENVIRONMENT CONFIGURATION
+# =============================================================================
+# 
+# IMPORTANT: Replace ALL placeholder values with your actual API keys!
+# Copy this file to .env in the root directory and update all values.
+#
+# =============================================================================
+
+# Django Configuration
+# =============================================================================
+DJANGO_SECRET_KEY=your-django-secret-key-here-generate-a-secure-random-string
+DEBUG=True
+
+# Slack API Configuration
+# =============================================================================
+# Get these from: https://api.slack.com/apps
+# 1. Create a new Slack app
+# 2. Go to "OAuth & Permissions" 
+# 3. Copy the "Bot User OAuth Token" (starts with xoxb-)
+# 4. Go to "Basic Information" > "App Credentials"
+# 5. Copy the "Signing Secret"
+
+SLACK_BOT_TOKEN=xoxb-your-slack-bot-token-here
+SLACK_SIGNING_SECRET=your-slack-signing-secret-here
+
+# Google Gemini AI Configuration  
+# =============================================================================
+# Get this from: https://makersuite.google.com/app/apikey
+# 1. Go to Google AI Studio
+# 2. Create an API key
+# 3. Copy the API key here
+
+GEMINI_API_KEY=your-gemini-api-key-here
+
+# Database Configuration (Optional - uses SQLite by default)
+# =============================================================================
+# For production, you might want to use PostgreSQL:
+# DATABASE_URL=postgresql://username:password@localhost:5432/slack_bot
+
+# Ngrok Configuration (Optional)
+# =============================================================================
+# If you have an ngrok account, you can set a custom domain:
+# NGROK_AUTHTOKEN=your-ngrok-auth-token
+# NGROK_DOMAIN=secretly-pretty-swine.ngrok-free.app
+
+# =============================================================================
+# SETUP INSTRUCTIONS:
+# =============================================================================
+# 
+# 1. Copy this file: cp config/environment.example .env
+# 2. Edit .env file with your actual API keys
+# 3. Set up your Slack app with these permissions:
+#    - channels:history
+#    - channels:read  
+#    - users:read
+#    - chat:write
+#    - commands
+# 4. Set your Slack app's Request URL to: https://your-ngrok-url/slack/commands/ultra/
+# 5. Run: ./start_dev.sh
+#
+# =============================================================================
+
+# Optional: Sentry for error tracking (production)
+# SENTRY_DSN=your-sentry-dsn
+
+# Optional: Database configuration (for production)
+# DATABASE_URL=postgresql://user:pass@localhost/dbname

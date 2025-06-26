@@ -1,0 +1,59 @@
+display_information:
+  name: AI Channel Summarizer
+  description: AI-powered Slack channel summarizer with advanced filtering and categorization
+  background_color: "#2c2d30"
+
+features:
+  bot_user:
+    display_name: AI Summarizer
+    always_online: true
+
+  slash_commands:
+    - command: /summary
+      description: Get an AI-powered summary of channel messages
+      usage_hint: "[#channel] [filter:name] | thread | category name | all"
+      should_escape: false
+    - command: /filter
+      description: Create and manage message filters
+      usage_hint: "create | list"
+      should_escape: false
+    - command: /category
+      description: Create and manage channel categories
+      usage_hint: "create | list"
+      should_escape: false
+
+oauth_config:
+  scopes:
+    bot:
+      - channels:history
+      - channels:read
+      - chat:write
+      - commands
+      - groups:history
+      - groups:read
+      - im:history
+      - im:read
+      - mpim:history
+      - mpim:read
+      - reactions:read
+      - users:read
+
+settings:
+  event_subscriptions:
+    request_url: https://your-domain.com/slack/events/
+    bot_events:
+      - message
+      - message.channels
+      - message.groups
+      - message.im
+      - message.mpim
+      - reaction_added
+      - reaction_removed
+  
+  interactivity:
+    is_enabled: true
+    request_url: https://your-domain.com/slack/actions/
+    
+  org_deploy_enabled: false
+  socket_mode_enabled: false
+  token_rotation_enabled: false 
