@@ -17,6 +17,7 @@ from ..services.gemini_service import GeminiService
 from ..services.filter_service import FilterService
 from ..services.category_service import CategoryService
 from ..services.block_kit_service import BlockKitService
+from ..models import User  # <-- Add this import
 
 logger = logging.getLogger(__name__)
 
@@ -395,6 +396,80 @@ def slack_commands_handler(request):
             background_thread = threading.Thread(target=background_summary)
             background_thread.daemon = True
             background_thread.start()
+            return immediate_response
+
+        # /summary vip
+        if cmd == '/summary' and txt_lower == 'vip':
+            immediate_response = JsonResponse({
+                'response_type': 'ephemeral',
+                'blocks': [
+                    {
+                        "type": "section",
+                        "text": {
+                            "type": "mrkdwn",
+                            "text": "🌟 *Processing summaries for all VIP user DMs...*\n\n"
+                                    "🤖 AI analysis starting for each VIP user's direct messages.\n"
+                                    "⏱️ This may take a few seconds."
+                        }
+                    }
+                ]
+            })
+
+            def background_vip_dm_process():
+                try:
+                    # Dynamically fetch all users from Slack
+                    slack_users = slack_service.client.users_list()['members']
+                    # Define your VIP criteria here (example: custom profile field 'vip' == True)
+                    vip_users = [
+                        u for u in slack_users
+                        if not u.get('deleted', False)
+                        and not u.get('is_bot', False)
+                        and u.get('profile', {}).get('fields', {})
+                        and any(
+                            f.get('value', '').lower() == 'true'
+                            for f in u['profile']['fields'].values()
+                            if isinstance(f, dict)
+                        )
+                    ]
+                    summaries = []
+                    for vip in vip_users:
+                        vip_id = vip['id']
+                        vip_name = vip['profile'].get('real_name', vip.get('name', vip_id))
+                        dm_channel_id = slack_service.get_dm_channel_id(vip_id)
+                        if not dm_channel_id:
+                            summaries.append(f"*{vip_name}*: :x: Could not open DM channel.")
+                            continue
+                        messages = slack_service.fetch_unread_dm_messages(dm_channel_id, vip_id)
+                        if messages:
+                            enriched = slack_service.enrich_messages_with_usernames(messages)
+                            summary = gemini_service.summarize_messages(enriched, f"DM with {vip_name}")
+                            summaries.append(f"*{vip_name}*\n{summary}\n")
+                        else:
+                            summaries.append(f"*{vip_name}*: 📭 No new unread messages.")
+                    if summaries:
+                        combined = {
+                            'response_type': 'ephemeral',
+                            'blocks': [
+                                {
+                                    "type": "section",
+                                    "text": {
+                                        "type": "mrkdwn",
+                                        "text": "🌟 *VIP DM Summaries*\n\n" + "\n---\n".join(summaries)
+                                    }
+                                }
+                            ]
+                        }
+                        if response_url:
+                            requests.post(response_url, json=combined, timeout=10)
+                except Exception as e:
+                    logger.error(f"VIP DM summary error: {str(e)}")
+                    if response_url:
+                        error = block_kit_service.create_error_message(
+                            f"Error generating VIP DM summaries: {str(e)[:100]}..."
+                        )
+                        requests.post(response_url, json=error, timeout=5)
+
+            threading.Thread(target=background_vip_dm_process, daemon=True).start()
             return immediate_response
 
         logger.warning(f"Unknown command received: {command}")

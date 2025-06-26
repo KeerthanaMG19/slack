@@ -115,3 +115,13 @@ class FilterCondition(models.Model):
 
     def __str__(self):
         return f"{self.field} {self.operator} {self.value}"
+
+class User(models.Model):
+    """Slack user with VIP flag"""
+    slack_id = models.CharField(max_length=50, unique=True)
+    name = models.CharField(max_length=100, blank=True)
+    isVip = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"{self.name or self.slack_id} ({'VIP' if self.isVip else 'Regular'})"
