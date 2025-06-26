@@ -104,9 +104,9 @@ class CategoryService:
             logger.error(f"[CATEGORY_GET] Error getting categories for user {user_id}: {str(e)}", exc_info=True)
             return []
 
-    def get_category_channels(self, category_id: int) -> List[str]:
-        """Get all channel IDs in a category"""
-        return CategoryChannel.objects.filter(category_id=category_id).values_list('channel_id', flat=True)
+    def get_category_channels(self, category_id: int):
+        """Get all channel IDs and names in a category"""
+        return list(CategoryChannel.objects.filter(category_id=category_id).values_list('channel_id', flat=True))
 
     def get_channel_categories(self, channel_id: str) -> List[ChannelCategory]:
         """Get all categories that a channel belongs to"""
@@ -138,4 +138,4 @@ class CategoryService:
     def _invalidate_cache(self, user_id: str):
         """Invalidate the cache for a user's categories"""
         cache_key = f"user_categories_{user_id}"
-        cache.delete(cache_key) 
+        cache.delete(cache_key)

@@ -26,6 +26,7 @@ from .services.gemini_service import GeminiService
 from .services.category_service import CategoryService
 from .services.filter_service import FilterService
 from .services.block_kit_service import BlockKitService
+from .models import ChannelCategory
 
 logger = logging.getLogger(__name__)
 
@@ -245,7 +246,161 @@ def handle_block_actions(request):
                             'category_name': f'Error: {str(e)}'
                         }
                     })
-            
+            # Add Channel to Category
+            elif callback_id.startswith('add_channel_modal_'):
+                try:
+                    category_id = int(callback_id.split('_')[-1])
+                    values = view.get('state', {}).get('values', {})
+                    selected_channels = values.get('add_channel_select', {}).get('add_channel_select_input', {}).get('selected_channels', [])
+                    # Fetch category name
+                    categories = category_service.get_user_categories(user_id)
+                    category = next((c for c in categories if c['id'] == category_id), None)
+                    category_name = category['name'] if category else f"ID {category_id}"
+                    for ch in selected_channels:
+                        try:
+                            channel_info = slack_service.get_channel_info(ch)
+                            channel_name = channel_info.get('name', ch)
+                        except Exception:
+                            channel_name = ch
+                        category_service.add_channel_to_category(category_id, ch, channel_name, user_id)
+                    slack_service.send_message(
+                        channel=user_id,
+                        text=f":white_check_mark: Added {len(selected_channels)} channel(s) to *{category_name}*."
+                    )
+                    # Send updated category list
+                    updated_categories = category_service.get_user_categories(user_id)
+                    slack_service.send_message(
+                        channel=user_id,
+                        text=":information_source: Here is your updated category list.",
+                        thread_ts=None,
+                    )
+                    slack_service.client.chat_postMessage(
+                        channel=user_id,
+                        blocks=block_kit_service.create_category_management_blocks(updated_categories)
+                    )
+                    return JsonResponse({'response_action': 'clear'})
+                except Exception as e:
+                    logger.error(f"[ADD_CHANNEL_MODAL] Error: {str(e)}", exc_info=True)
+                    return JsonResponse({
+                        'response_action': 'errors',
+                        'errors': {
+                            'category_name': f'Error: {str(e)}'
+                        }
+                    })
+            # Remove Channel from Category
+            elif callback_id.startswith('remove_channel_modal_'):
+                try:
+                    category_id = int(callback_id.split('_')[-1])
+                    values = view.get('state', {}).get('values', {})
+                    selected_channels = values.get('remove_channel_select', {}).get('remove_channel_select_input', {}).get('selected_options', [])
+                    categories = category_service.get_user_categories(user_id)
+                    category = next((c for c in categories if c['id'] == category_id), None)
+                    category_name = category['name'] if category else f"ID {category_id}"
+                    for ch in selected_channels:
+                        channel_id = ch['value']
+                        category_service.remove_channel_from_category(category_id, channel_id)
+                    slack_service.send_message(
+                        channel=user_id,
+                        text=f":white_check_mark: Removed {len(selected_channels)} channel(s) from *{category_name}*."
+                    )
+                    updated_categories = category_service.get_user_categories(user_id)
+                    slack_service.send_message(
+                        channel=user_id,
+                        text=":information_source: Here is your updated category list.",
+                        thread_ts=None,
+                    )
+                    slack_service.client.chat_postMessage(
+                        channel=user_id,
+                        blocks=block_kit_service.create_category_management_blocks(updated_categories)
+                    )
+                    return JsonResponse({'response_action': 'clear'})
+                except Exception as e:
+                    logger.error(f"[REMOVE_CHANNEL_MODAL] Error: {str(e)}", exc_info=True)
+                    return JsonResponse({
+                        'response_action': 'errors',
+                        'errors': {
+                            'category_name': f'Error: {str(e)}'
+                        }
+                    })
+            # Edit Category
+            elif callback_id.startswith('edit_category_modal_'):
+                try:
+                    category_id = int(callback_id.split('_')[-1])
+                    values = view.get('state', {}).get('values', {})
+                    new_name = values.get('edit_category_name', {}).get('edit_category_name_input', {}).get('value', '')
+                    new_desc = values.get('edit_category_description', {}).get('edit_category_description_input', {}).get('value', '')
+                    old_categories = category_service.get_user_categories(user_id)
+                    old_category = next((c for c in old_categories if c['id'] == category_id), None)
+                    old_name = old_category['name'] if old_category else f"ID {category_id}"
+                    category_service.rename_category(category_id, new_name, user_id)
+                    # Optionally update description if supported
+                    try:
+                        cat = ChannelCategory.objects.get(id=category_id, created_by=user_id)
+                        cat.description = new_desc
+                        cat.save()
+                    except Exception:
+                        pass
+                    slack_service.send_message(
+                        channel=user_id,
+                        text=f":white_check_mark: Category *{old_name}* updated to *{new_name}*."
+                    )
+                    updated_categories = category_service.get_user_categories(user_id)
+                    slack_service.send_message(
+                        channel=user_id,
+                        text=":information_source: Here is your updated category list.",
+                        thread_ts=None,
+                    )
+                    slack_service.client.chat_postMessage(
+                        channel=user_id,
+                        blocks=block_kit_service.create_category_management_blocks(updated_categories)
+                    )
+                    return JsonResponse({'response_action': 'clear'})
+                except Exception as e:
+                    logger.error(f"[EDIT_CATEGORY_MODAL] Error: {str(e)}", exc_info=True)
+                    return JsonResponse({
+                        'response_action': 'errors',
+                        'errors': {
+                            'category_name': f'Error: {str(e)}'
+                        }
+                    })
+            # Delete Category
+            elif callback_id.startswith('delete_category_modal_'):
+                try:
+                    category_id = int(callback_id.split('_')[-1])
+                    # Fetch category name before deletion
+                    categories = category_service.get_user_categories(user_id)
+                    category = next((c for c in categories if c['id'] == category_id), None)
+                    if not category:
+                        slack_service.send_message(
+                            channel=user_id,
+                            text=f":warning: Category already deleted or does not exist."
+                        )
+                        return JsonResponse({'response_action': 'clear'})
+                    category_name = category['name']
+                    category_service.delete_category(category_id, user_id)
+                    slack_service.send_message(
+                        channel=user_id,
+                        text=f":white_check_mark: Category *{category_name}* deleted."
+                    )
+                    updated_categories = category_service.get_user_categories(user_id)
+                    slack_service.send_message(
+                        channel=user_id,
+                        text=":information_source: Here is your updated category list.",
+                        thread_ts=None,
+                    )
+                    slack_service.client.chat_postMessage(
+                        channel=user_id,
+                        blocks=block_kit_service.create_category_management_blocks(updated_categories)
+                    )
+                    return JsonResponse({'response_action': 'clear'})
+                except Exception as e:
+                    logger.error(f"[DELETE_CATEGORY_MODAL] Error: {str(e)}", exc_info=True)
+                    return JsonResponse({
+                        'response_action': 'errors',
+                        'errors': {
+                            'category_name': f'Error: {str(e)}'
+                        }
+                    })
             logger.warning(f"[VIEW_SUBMISSION] Unknown callback_id: {callback_id}")
             return JsonResponse({
                 'response_action': 'errors',
@@ -405,6 +560,142 @@ def handle_block_actions(request):
                 ]
             })
         
+        # Add Channel to Category
+        elif action_id.startswith('add_channel_'):
+            category_id = int(action_id.split('_')[-1])
+            logger.info(f"[BLOCK_ACTION] Add Channel to Category {category_id}")
+            # Open a modal to select channels to add
+            modal_view = {
+                "type": "modal",
+                "callback_id": f"add_channel_modal_{category_id}",
+                "title": {"type": "plain_text", "text": "Add Channel", "emoji": True},
+                "submit": {"type": "plain_text", "text": "Add", "emoji": True},
+                "close": {"type": "plain_text", "text": "Cancel", "emoji": True},
+                "blocks": [
+                    {
+                        "type": "input",
+                        "block_id": "add_channel_select",
+                        "element": {
+                            "type": "multi_channels_select",
+                            "action_id": "add_channel_select_input",
+                            "placeholder": {"type": "plain_text", "text": "Select channels", "emoji": True}
+                        },
+                        "label": {"type": "plain_text", "text": "Channels to Add", "emoji": True}
+                    }
+                ]
+            }
+            slack_service.client.views_open(trigger_id=trigger_id, view=modal_view)
+            return JsonResponse({'ok': True})
+
+        # Remove Channel from Category
+        elif action_id.startswith('remove_channel_'):
+            category_id = int(action_id.split('_')[-1])
+            logger.info(f"[BLOCK_ACTION] Remove Channel from Category {category_id}")
+            # Open a modal to select channels to remove
+            # FIX: Show channel names, not IDs
+            category_channels = category_service.get_category_channels(category_id)
+            # Fetch channel names for each channel_id
+            channel_options = []
+            for ch_id in category_channels:
+                try:
+                    channel_info = slack_service.get_channel_info(ch_id)
+                    channel_name = channel_info.get('name', ch_id)
+                except Exception:
+                    channel_name = ch_id
+                channel_options.append({
+                    "text": {"type": "plain_text", "text": f"#{channel_name}", "emoji": True},
+                    "value": ch_id
+                })
+            modal_view = {
+                "type": "modal",
+                "callback_id": f"remove_channel_modal_{category_id}",
+                "title": {"type": "plain_text", "text": "Remove Channel", "emoji": True},
+                "submit": {"type": "plain_text", "text": "Remove", "emoji": True},
+                "close": {"type": "plain_text", "text": "Cancel", "emoji": True},
+                "blocks": [
+                    {
+                        "type": "input",
+                        "block_id": "remove_channel_select",
+                        "element": {
+                            "type": "multi_static_select",
+                            "action_id": "remove_channel_select_input",
+                            "placeholder": {"type": "plain_text", "text": "Select channels", "emoji": True},
+                            "options": channel_options
+                        },
+                        "label": {"type": "plain_text", "text": "Channels to Remove", "emoji": True}
+                    }
+                ]
+            }
+            slack_service.client.views_open(trigger_id=trigger_id, view=modal_view)
+            return JsonResponse({'ok': True})
+
+        # Edit Category (name/description)
+        elif action_id.startswith('edit_category_'):
+            category_id = int(action_id.split('_')[-1])
+            logger.info(f"[BLOCK_ACTION] Edit Category {category_id}")
+            # Fetch category details
+            categories = category_service.get_user_categories(user_id)
+            category = next((c for c in categories if c['id'] == category_id), None)
+            modal_view = {
+                "type": "modal",
+                "callback_id": f"edit_category_modal_{category_id}",
+                "title": {"type": "plain_text", "text": "Edit Category", "emoji": True},
+                "submit": {"type": "plain_text", "text": "Save", "emoji": True},
+                "close": {"type": "plain_text", "text": "Cancel", "emoji": True},
+                "blocks": [
+                    {
+                        "type": "input",
+                        "block_id": "edit_category_name",
+                        "element": {
+                            "type": "plain_text_input",
+                            "action_id": "edit_category_name_input",
+                            "initial_value": category['name'] if category else "",
+                            "placeholder": {"type": "plain_text", "text": "Enter category name"}
+                        },
+                        "label": {"type": "plain_text", "text": "Name", "emoji": True}
+                    },
+                    {
+                        "type": "input",
+                        "block_id": "edit_category_description",
+                        "optional": True,
+                        "element": {
+                            "type": "plain_text_input",
+                            "action_id": "edit_category_description_input",
+                            "multiline": True,
+                            "initial_value": category['description'] if category else "",
+                            "placeholder": {"type": "plain_text", "text": "Enter category description"}
+                        },
+                        "label": {"type": "plain_text", "text": "Description", "emoji": True}
+                    }
+                ]
+            }
+            slack_service.client.views_open(trigger_id=trigger_id, view=modal_view)
+            return JsonResponse({'ok': True})
+
+        # Delete Category
+        elif action_id.startswith('delete_category_'):
+            category_id = int(action_id.split('_')[-1])
+            logger.info(f"[BLOCK_ACTION] Delete Category {category_id}")
+            # Confirm deletion
+            modal_view = {
+                "type": "modal",
+                "callback_id": f"delete_category_modal_{category_id}",
+                "title": {"type": "plain_text", "text": "Delete Category", "emoji": True},
+                "submit": {"type": "plain_text", "text": "Delete", "emoji": True},
+                "close": {"type": "plain_text", "text": "Cancel", "emoji": True},
+                "blocks": [
+                    {
+                        "type": "section",
+                        "text": {
+                            "type": "mrkdwn",
+                            "text": ":warning: Are you sure you want to *delete* this category? This cannot be undone."
+                        }
+                    }
+                ]
+            }
+            slack_service.client.views_open(trigger_id=trigger_id, view=modal_view)
+            return JsonResponse({'ok': True})
+
         logger.warning(f"[BLOCK_ACTION] Unsupported action: {action_id}")
         return JsonResponse({
             'response_type': 'ephemeral',

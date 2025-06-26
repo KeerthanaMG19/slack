@@ -234,10 +234,11 @@ class SlackService:
             return channel_info
         except SlackApiError as e:
             logger.error(f"SlackApiError getting channel info for {channel_id}: {e.response['error']}")
-            raise
+            # Fallback: return dict with id as name
+            return {'id': channel_id, 'name': channel_id}
         except Exception as e:
             logger.error(f"Unexpected error getting channel info for {channel_id}: {str(e)}", exc_info=True)
-            raise
+            return {'id': channel_id, 'name': channel_id}
     
     def fetch_unread_messages(self, channel_id, user_id):
         """Fetch only unread messages for a specific user in a channel"""

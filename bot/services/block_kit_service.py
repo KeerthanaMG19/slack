@@ -211,7 +211,7 @@ class BlockKitService:
 
     @staticmethod
     def create_category_management_blocks(categories: List[Dict]) -> List[Dict]:
-        """Create blocks for category management"""
+        """Create blocks for category management with 4 actions per category"""
         blocks = [
             {
                 "type": "section",
@@ -223,29 +223,45 @@ class BlockKitService:
         ]
 
         for category in categories:
-            # Format channel names - just use the stored channel name
             channel_list = "\n".join([f"• #{ch['name']}" for ch in category['channels']])
-            
-            blocks.extend([
-                {
-                    "type": "section",
-                    "text": {
-                        "type": "mrkdwn",
-                        "text": f"*{category['name']}*\n{channel_list or 'No channels yet'}"
-                    },
-                    "accessory": {
+            blocks.append({
+                "type": "section",
+                "text": {
+                    "type": "mrkdwn",
+                    "text": f"*{category['name']}*\n{channel_list or 'No channels yet'}"
+                }
+            })
+            blocks.append({
+                "type": "actions",
+                "elements": [
+                    {
                         "type": "button",
-                        "text": {
-                            "type": "plain_text",
-                            "text": "Manage",
-                            "emoji": True
-                        },
+                        "text": {"type": "plain_text", "text": "Add Channel", "emoji": True},
                         "value": str(category['id']),
-                        "action_id": f"manage_category_{category['id']}"
+                        "action_id": f"add_channel_{category['id']}"
+                    },
+                    {
+                        "type": "button",
+                        "text": {"type": "plain_text", "text": "Remove Channel", "emoji": True},
+                        "value": str(category['id']),
+                        "action_id": f"remove_channel_{category['id']}"
+                    },
+                    {
+                        "type": "button",
+                        "text": {"type": "plain_text", "text": "Edit Category", "emoji": True},
+                        "value": str(category['id']),
+                        "action_id": f"edit_category_{category['id']}"
+                    },
+                    {
+                        "type": "button",
+                        "text": {"type": "plain_text", "text": "Delete Category", "emoji": True},
+                        "style": "danger",
+                        "value": str(category['id']),
+                        "action_id": f"delete_category_{category['id']}"
                     }
-                },
-                {"type": "divider"}
-            ])
+                ]
+            })
+            blocks.append({"type": "divider"})
 
         blocks.append({
             "type": "actions",
@@ -374,4 +390,4 @@ class BlockKitService:
                     }
                 }
             ]
-        } 
+        }

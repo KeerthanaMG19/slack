@@ -257,11 +257,28 @@ def slack_commands_handler(request):
                             if messages:
                                 enriched_messages = slack_service.enrich_messages_with_usernames(messages)
                                 summary = gemini_service.generate_summary(enriched_messages, channel['name'])
-                                if summary:
-                                    summaries.append(f"*#{channel['name']}*\n{summary.get('text', '')}\n")
+                                summary_text = summary.get('text', '') if summary else f"📭 No summary generated for #{channel['name']}."
+                            else:
+                                # Fallback summary for no messages
+                                summary_text = (
+                                    f"📊 **Summary Report for #{channel['name']}**\n\n"
+                                    f"📋 Channel Status:\n"
+                                    f"🔹 No messages found in the last 24 hours\n"
+                                    f"🔹 Channel appears inactive\n\n"
+                                    f"━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+                                    f"📈 Report Details: No recent activity\n"
+                                    f"🤖 AI Analysis: Generated on {time.strftime('%Y-%m-%d %H:%M')}\n"
+                                    f"━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+                                )
+                            summaries.append(f"*#{channel['name']}*\n{summary_text}\n")
                         except Exception as e:
                             logger.error(f"Error summarizing channel {channel['name']}: {str(e)}")
-                            continue
+                            # Still append a block for this channel with error info
+                            summaries.append(
+                                f"*#{channel['name']}*\n"
+                                f":x: Error generating summary for this channel.\n"
+                                f"Error: {str(e)[:100]}\n"
+                            )
 
                     if summaries:
                         combined_summary = {
@@ -271,8 +288,7 @@ def slack_commands_handler(request):
                                     "type": "section",
                                     "text": {
                                         "type": "mrkdwn",
-                                        "text": f"📊 *Summary of {category_name} Category*\n\n" + 
-                                               "\n---\n".join(summaries)
+                                        "text": f"📊 *Summary of {category_name} Category*\n\n" + "\n---\n".join(summaries)
                                     }
                                 }
                             ]
