@@ -120,6 +120,13 @@ class BlockKitService:
         """Create blocks for filter creation"""
         return [
             {
+                "type": "section",
+                "text": {
+                    "type": "mrkdwn",
+                    "text": "*Create a New Filter*"
+                }
+            },
+            {
                 "type": "input",
                 "block_id": "filter_name",
                 "element": {
@@ -132,7 +139,8 @@ class BlockKitService:
                 },
                 "label": {
                     "type": "plain_text",
-                    "text": "Filter Name"
+                    "text": "Filter Name",
+                    "emoji": True
                 }
             },
             {
@@ -162,8 +170,42 @@ class BlockKitService:
                             "value": "any"
                         }
                     ],
-                    "action_id": "match_type_select"
+                    "action_id": "match_type_select",
+                    "initial_option": {
+                        "text": {
+                            "type": "plain_text",
+                            "text": "Match All Conditions",
+                            "emoji": True
+                        },
+                        "value": "all"
+                    }
                 }
+            },
+            {
+                "type": "actions",
+                "block_id": "filter_actions",
+                "elements": [
+                    {
+                        "type": "button",
+                        "text": {
+                            "type": "plain_text",
+                            "text": "Add Condition",
+                            "emoji": True
+                        },
+                        "style": "primary",
+                        "action_id": "add_filter_condition"
+                    },
+                    {
+                        "type": "button",
+                        "text": {
+                            "type": "plain_text",
+                            "text": "Create Filter",
+                            "emoji": True
+                        },
+                        "style": "primary",
+                        "action_id": "create_filter_submit"
+                    }
+                ]
             }
         ]
 

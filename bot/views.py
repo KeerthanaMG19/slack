@@ -261,7 +261,88 @@ def handle_block_actions(request):
         logger.info(f"[BLOCK_ACTION] Action ID: {action_id}")
         
         # Handle different actions
-        if action_id == 'create_category':
+        if action_id == 'add_filter_condition':
+            logger.info("[BLOCK_ACTION] Adding filter condition")
+            # Open a modal for adding a condition
+            modal_view = {
+                "type": "modal",
+                "callback_id": "add_filter_condition_modal",
+                "title": {
+                    "type": "plain_text",
+                    "text": "Add Filter Condition",
+                    "emoji": True
+                },
+                "submit": {
+                    "type": "plain_text",
+                    "text": "Add",
+                    "emoji": True
+                },
+                "close": {
+                    "type": "plain_text",
+                    "text": "Cancel",
+                    "emoji": True
+                },
+                "blocks": [
+                    {
+                        "type": "input",
+                        "block_id": "condition_text",
+                        "element": {
+                            "type": "plain_text_input",
+                            "action_id": "condition_text_input",
+                            "placeholder": {
+                                "type": "plain_text",
+                                "text": "Enter text to match"
+                            }
+                        },
+                        "label": {
+                            "type": "plain_text",
+                            "text": "Match Text",
+                            "emoji": True
+                        }
+                    }
+                ]
+            }
+            slack_service.client.views_open(
+                trigger_id=trigger_id,
+                view=modal_view
+            )
+            return JsonResponse({'ok': True})
+            
+        elif action_id == 'create_filter_submit':
+            logger.info("[BLOCK_ACTION] Creating filter")
+            # Get the filter name and match type from the blocks
+            blocks = payload.get('state', {}).get('values', {})
+            filter_name = blocks.get('filter_name', {}).get('filter_name_input', {}).get('value', '')
+            match_type = blocks.get('match_type', {}).get('match_type_select', {}).get('selected_option', {}).get('value', 'all')
+            
+            if not filter_name:
+                return JsonResponse({
+                    'response_type': 'ephemeral',
+                    'text': "Please enter a filter name"
+                })
+            
+            try:
+                # Create the filter
+                filter = filter_service.create_filter(
+                    name=filter_name,
+                    match_type=match_type,
+                    created_by=user_id
+                )
+                
+                # Send success message
+                return JsonResponse({
+                    'response_type': 'ephemeral',
+                    'text': f":white_check_mark: Filter *{filter_name}* created successfully!\nUse `/filter list` to see your filters."
+                })
+                
+            except Exception as e:
+                logger.error(f"[FILTER_CREATE] Error creating filter: {str(e)}", exc_info=True)
+                return JsonResponse({
+                    'response_type': 'ephemeral',
+                    'text': f"Error creating filter: {str(e)}"
+                })
+        
+        elif action_id == 'create_category':
             logger.info("[BLOCK_ACTION] Opening category creation modal")
             # Open a modal for category creation
             modal_view = block_kit_service.create_category_modal()
@@ -271,7 +352,7 @@ def handle_block_actions(request):
             )
             logger.info(f"[BLOCK_ACTION] Modal opened successfully: {response}")
             return JsonResponse({'ok': True})
-            
+        
         elif action_id.startswith('manage_category_'):
             category_id = int(action_id.split('_')[-1])
             logger.info(f"[BLOCK_ACTION] Managing category {category_id}")
